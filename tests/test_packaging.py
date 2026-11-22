@@ -54,7 +54,7 @@ def test_pkgbuild_fields():
     for needle in (
         "pkgname=winvaders",
         "arch=('any')",
-        "license=('GPL-3.0-or-later')",
+        "license=('MIT')",
         "usr/lib/winvaders/winvaders-shortcut",
         "etc/xdg/autostart/winvaders-shortcut.desktop",
         "usr/share/applications/winvaders.desktop",
