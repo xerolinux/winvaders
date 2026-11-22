@@ -1,6 +1,6 @@
 # WinVaders
 
-![WinVaders gameplay](docs/demo.gif)
+<p align="center"><img src="docs/demo.gif" alt="WinVaders gameplay"></p>
 
 A space-shooter mini-game for XeroLinux: defend Linux from waves of invading
 Microsoft apps. Forty enemy types join the invasion as you climb, every level
