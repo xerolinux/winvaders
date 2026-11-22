@@ -12,7 +12,7 @@ that never end.
 
 Inspired by: **RandyPinball**
 
-## Install
+## Install on XeroLinux only
 
 ```sh
 sudo pacman -S winvaders

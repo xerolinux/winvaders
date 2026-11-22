@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 .superpowers/
 dist/
+push.sh
 build/
 packaging/src/
 packaging/pkg/
