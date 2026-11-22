@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=WinVaders
+GenericName=Arcade Shooter
+Comment=Defend Linux from invading Microsoft apps
+Exec=winvaders
+Icon=winvaders
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=space;invaders;arcade;shooter;
+StartupWMClass=winvaders

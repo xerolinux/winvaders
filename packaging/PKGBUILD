@@ -1,0 +1,40 @@
+# Maintainer: DarkXero <info@techxero.com>
+
+pkgname=winvaders
+pkgver=1.1.0
+pkgrel=1
+pkgdesc="Arcade shooter: defend Linux from invading Microsoft apps"
+arch=('any')
+url="https://xerolinux.xyz"
+license=('MIT')
+depends=(
+	python
+	pyside6
+	qt6-declarative
+	qt6-multimedia
+	qt6-wayland
+)
+makedepends=(
+	python-build
+	python-installer
+	python-hatchling
+	python-wheel
+)
+
+_repo_root="${startdir}/.."
+
+build() {
+	cd "${_repo_root}"
+	python -m build --wheel --no-isolation --outdir "${srcdir}/dist"
+}
+
+package() {
+	cd "${_repo_root}"
+	python -m installer --destdir="${pkgdir}" "${srcdir}"/dist/*.whl
+
+	install -Dm644 data/winvaders.desktop "${pkgdir}/usr/share/applications/winvaders.desktop"
+	install -Dm644 data/winvaders.svg "${pkgdir}/usr/share/icons/hicolor/scalable/apps/winvaders.svg"
+	install -Dm755 data/winvaders-shortcut "${pkgdir}/usr/lib/winvaders/winvaders-shortcut"
+	install -Dm644 data/winvaders-shortcut-autostart.desktop "${pkgdir}/etc/xdg/autostart/winvaders-shortcut.desktop"
+	install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

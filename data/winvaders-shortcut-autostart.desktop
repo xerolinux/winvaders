@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=WinVaders Desktop Shortcut
+Comment=Places the WinVaders icon on the desktop once
+Exec=/usr/lib/winvaders/winvaders-shortcut
+NoDisplay=true
+Terminal=false

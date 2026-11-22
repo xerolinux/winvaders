@@ -1,0 +1,22 @@
+#!/bin/sh
+# Places the WinVaders icon on the user's desktop once. Runs from XDG
+# autostart, so it must never fail loudly.
+
+src="${WINVADERS_DESKTOP_FILE:-/usr/share/applications/winvaders.desktop}"
+marker="${XDG_DATA_HOME:-$HOME/.local/share}/winvaders/shortcut-done"
+
+[ -f "$src" ] || exit 0
+if [ "$1" != "--force" ] && [ -e "$marker" ]; then
+    exit 0
+fi
+
+desk=""
+if command -v xdg-user-dir >/dev/null 2>&1; then
+    desk="$(xdg-user-dir DESKTOP 2>/dev/null)"
+fi
+[ -n "$desk" ] || desk="$HOME/Desktop"
+
+mkdir -p "$desk" "$(dirname "$marker")" 2>/dev/null || exit 0
+install -m755 "$src" "$desk/winvaders.desktop" 2>/dev/null || exit 0
+: > "$marker" 2>/dev/null
+exit 0
