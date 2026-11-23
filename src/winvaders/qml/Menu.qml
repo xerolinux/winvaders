@@ -27,7 +27,10 @@ FocusScope {
         list.push({ id: "sound", label: "SOUND: " + (soundOn ? "ON" : "OFF") })
         list.push({ id: "music", label: "MUSIC: " + (musicOn ? "ON" : "OFF") })
         list.push({ id: "fullscreen", label: "FULLSCREEN: " + (fullscreen ? "ON" : "OFF") })
-        if (!Storage.hasDesktopShortcut()) list.push({ id: "shortcut", label: "ADD DESKTOP SHORTCUT" })
+        const update = { available: "UPDATE TO v" + Updater.latest, downloading: "DOWNLOADING UPDATE...",
+                         failed: "UPDATE FAILED - RETRY" }[Updater.state]
+        if (update) list.unshift({ id: "update", label: update })
+        if (Storage.canAddDesktopShortcut() && !Storage.hasDesktopShortcut()) list.push({ id: "shortcut", label: "ADD DESKTOP SHORTCUT" })
         list.push({ id: "quit", label: "QUIT" })
         entries = list
         current = Math.min(current, list.length - 1)
@@ -36,6 +39,7 @@ FocusScope {
 
     function activate(index) {
         switch (entries[index].id) {
+        case "update": Updater.install(); break
         case "continue": continueGame(); break
         case "new": newGame(); break
         case "scores": showScores(); break
@@ -51,6 +55,12 @@ FocusScope {
     onMusicOnChanged: refresh()
     onFullscreenChanged: refresh()
     onVisibleChanged: if (visible) refresh()
+
+    Connections {
+        target: Updater
+        enabled: root.visible
+        function onStateChanged() { root.refresh() }
+    }
     Component.onCompleted: refresh()
 
     Keys.onPressed: function(event) {

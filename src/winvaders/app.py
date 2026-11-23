@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -7,8 +8,10 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from . import shortcut
 from .audio import SoundBoard
+from .gamepad import GamepadInput
 from .music import MusicPlayer
 from .storage import Storage
+from .updater import Updater
 
 QML_DIR = Path(__file__).resolve().parent / "qml"
 
@@ -59,6 +62,10 @@ class StorageBridge(QObject):
         return shortcut.install_shortcut()
 
     @Slot(result=bool)
+    def canAddDesktopShortcut(self):
+        return shortcut.SCRIPT.exists()
+
+    @Slot(result=bool)
     def hasDesktopShortcut(self):
         return shortcut.has_shortcut()
 
@@ -73,6 +80,8 @@ def create_engine(app: QGuiApplication) -> QQmlApplicationEngine:
     engine.rootContext().setContextProperty("Sound", engine.sound)
     engine.music = MusicPlayer(parent=engine)
     engine.rootContext().setContextProperty("Music", engine.music)
+    engine.updater = Updater(appimage=os.environ.get("APPIMAGE"), parent=engine)
+    engine.rootContext().setContextProperty("Updater", engine.updater)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
     return engine
 
@@ -88,4 +97,6 @@ def main() -> int:
         for w in engine.qml_warnings:
             print(w, file=sys.stderr)
         return 1
+    engine.gamepad = GamepadInput(engine.rootObjects()[0], parent=engine)
+    engine.updater.check()
     return app.exec()

@@ -52,6 +52,8 @@ FocusScope {
     property bool shield: false
     property string powerup: ""
     property int powerupTicks: 0
+    property int frozen: 0
+    property int doubleTicks: 0
 
     property var aliens: []
     property var boss: null
@@ -121,6 +123,7 @@ FocusScope {
         bullets = []
         enemyBullets = []
         drops = []
+        frozen = 0
         minions = []
         walls = []
         beams = []
@@ -177,7 +180,7 @@ FocusScope {
     }
 
     function addScore(points) {
-        score += points
+        score += doubleTicks > 0 ? points * 2 : points
         const r = Logic.awardLives(score, nextLife)
         if (r.gained > 0) {
             lives += r.gained
@@ -206,8 +209,7 @@ FocusScope {
         burst(a.x + a.w / 2, a.y + a.h / 2, null, 12)
         play("kill")
         if (Math.random() < Logic.POWERUP_DROP)
-            drops.push({ type: Logic.POWERUPS[Math.floor(Math.random() * Logic.POWERUPS.length)],
-                         x: a.x, y: a.y, w: 38, h: 24 })
+            drops.push({ type: Logic.pickPowerup(Math.random()), x: a.x, y: a.y, w: 38, h: 24 })
     }
 
     function damageBoss(amount) {
@@ -225,6 +227,42 @@ FocusScope {
         shield = true
         minions = []
         beams = []
+    }
+
+    function explode(x, y) {
+        const r = Logic.BOMB_RADIUS
+        burst(x, y, "#ff8c00", 24)
+        play("kill")
+        const near = o => Math.hypot(o.x + o.w / 2 - x, o.y + o.h / 2 - y) < r + o.w / 2
+        for (const a of aliens) if (a.alive && near(a)) damageAlien(a, 1)
+        for (const m of minions) {
+            if (m.hp > 0 && near(m)) {
+                m.hp = 0
+                addScore(10)
+            }
+        }
+        if (boss && boss.hp > 0 && Logic.rectsOverlap({ x: x - r, y: y - r, w: r * 2, h: r * 2 }, boss)) damageBoss(1)
+    }
+
+    function nuke() {
+        enemyBullets = []
+        for (const a of aliens) if (a.alive) damageAlien(a, 1)
+        for (const m of minions) m.hp = 0
+        for (const w of walls) w.hp = 0
+        beams = []
+        if (boss && boss.hp > 0) damageBoss(3)
+        for (let i = 0; i < 8; i++) burst(Math.random() * 1280, 100 + Math.random() * 450, null, 16)
+        play("bossdeath")
+    }
+
+    function collect(type) {
+        play("powerup")
+        if (type === "firewall") shield = true
+        else if (type === "oneup") { lives += 1; play("extralife") }
+        else if (type === "freeze") frozen = Logic.FREEZE_TICKS
+        else if (type === "double") doubleTicks = Logic.POWERUP_TICKS
+        else if (type === "nuke") nuke()
+        else { powerup = type; powerupTicks = Logic.POWERUP_TICKS }
     }
 
     function applyMute() {
@@ -248,10 +286,12 @@ FocusScope {
         const max = (rapid ? 6 : 3) * (spread ? 3 : 1)
         if (bullets.length >= max) return
         const bx = playerX + playerW / 2 - 2
+        const kind = powerup === "bomb" || powerup === "laser" || powerup === "homing" ? powerup : ""
+        const h = kind === "laser" ? 26 : 14
         if (spread) {
-            for (const vx of [-2.5, 0, 2.5]) bullets.push({ x: bx, y: playerY - 12, w: 4, h: 14, vx: vx })
+            for (const vx of [-2.5, 0, 2.5]) bullets.push({ x: bx, y: playerY - 12, w: 4, h: h, vx: vx, kind: kind })
         } else {
-            bullets.push({ x: bx, y: playerY - 12, w: 4, h: 14, vx: 0 })
+            bullets.push({ x: bx, y: playerY - 12, w: 4, h: h, vx: 0, kind: kind, hits: [] })
         }
         shotLog.push(bx)
         if (shotLog.length > 8) shotLog.shift()
@@ -384,9 +424,9 @@ FocusScope {
                 shoot({ x: cx - 6, y: by, w: 12, h: 12, vx: Math.cos(a) * v, vy: Math.sin(a) * v, src: kind })
             }
         } else {
-            const gap = Math.floor(Math.random() * 8)
+            const gap = Math.floor(Math.random() * 7)
             for (let i = 0; i < 8; i++) {
-                if (i === gap) continue
+                if (i === gap || i === gap + 1) continue
                 shoot({ x: 40 + i * 155, y: by, w: 46, h: 12, vx: 0, vy: v * 0.75, src: "winupdate" })
             }
         }
@@ -444,10 +484,22 @@ FocusScope {
         }
         if (boss.flash > 0) boss.flash--
         if (--boss.timer <= 0) {
-            bossAttack(boss.attacks[boss.attackIndex % boss.attacks.length])
+            const kind = boss.attacks[boss.attackIndex % boss.attacks.length]
+            bossAttack(kind)
             boss.attackIndex++
-            boss.timer = boss.attackEvery
+            boss.timer = Logic.attackDelay(kind, boss.attackEvery)
         }
+    }
+
+    function steer(b) {
+        let best = null, bestD = 1e9
+        for (const a of aliens) {
+            if (!a.alive || a.y > b.y) continue
+            const d = Math.abs(a.x + a.w / 2 - b.x) + (b.y - a.y) * 0.3
+            if (d < bestD) { bestD = d; best = a }
+        }
+        const target = best ? best.x + best.w / 2 : boss && boss.hp > 0 ? boss.x + boss.w / 2 : b.x
+        b.vx = Math.max(-6, Math.min(6, b.vx + Math.sign(target - b.x) * 0.6))
     }
 
     function marchAliens() {
@@ -525,12 +577,15 @@ FocusScope {
         if (invuln > 0) invuln--
         if (muted > 0) muted--
         if (powerupTicks > 0 && --powerupTicks === 0) powerup = ""
+        if (doubleTicks > 0) doubleTicks--
+        if (frozen > 0) frozen--
         if (fireHeld) fire()
 
         const player = { x: playerX, y: playerY, w: playerW, h: playerH }
 
         const keep = []
         for (const b of bullets) {
+            if (b.kind === "homing") steer(b)
             b.y -= 12
             b.x += b.vx
             if (b.y + b.h < 0 || hitBunker(b)) continue
@@ -543,7 +598,10 @@ FocusScope {
                     break
                 }
             }
-            if (hit) continue
+            if (hit) {
+                if (b.kind === "bomb") explode(b.x, b.y)
+                continue
+            }
             for (const e of enemyBullets) {
                 if (e.mute && !e.popped && Logic.rectsOverlap(b, e)) {
                     e.popped = true
@@ -553,6 +611,7 @@ FocusScope {
                 }
             }
             if (hit) continue
+            const pierce = b.kind === "laser"
             for (const m of minions) {
                 if (m.hp > 0 && Logic.rectsOverlap(b, m)) {
                     m.hp = 0
@@ -560,33 +619,46 @@ FocusScope {
                     burst(m.x + m.w / 2, m.y + m.h / 2, "#ffd400", 8)
                     play("kill")
                     hit = true
-                    break
+                    if (!pierce) break
                 }
             }
-            if (hit) continue
+            if (hit && !pierce) {
+                if (b.kind === "bomb") explode(b.x, b.y)
+                continue
+            }
+            hit = false
             for (const a of aliens) {
-                if (a.alive && Logic.rectsOverlap(b, a)) {
+                if (!a.alive || !Logic.rectsOverlap(b, a)) continue
+                if (pierce) {
+                    if (b.hits.indexOf(a) >= 0) continue
+                    b.hits.push(a)
                     damageAlien(a, 1)
-                    hit = true
-                    break
+                    continue
                 }
+                if (b.kind === "bomb") explode(b.x, b.y)
+                else damageAlien(a, 1)
+                hit = true
+                break
             }
             if (!hit && boss && boss.hp > 0 && Logic.rectsOverlap(b, boss)) {
-                damageBoss(1)
+                if (b.kind === "bomb") explode(b.x, b.y)
+                else damageBoss(1)
                 hit = true
             }
             if (!hit) keep.push(b)
         }
         bullets = keep
 
-        marchAliens()
-        updateBoss()
-        if (gameOver) return
-        if (Math.random() < diff.fireChance) enemyFire()
-        stepMinions()
-        stepWalls()
-        stepBeams(player)
-        if (gameOver) return
+        if (frozen === 0) {
+            marchAliens()
+            updateBoss()
+            if (gameOver) return
+            if (Math.random() < diff.fireChance) enemyFire()
+            stepMinions()
+            stepWalls()
+            stepBeams(player)
+            if (gameOver) return
+        }
 
         const playerCx = playerX + playerW / 2
         const enemyKeep = []
@@ -611,9 +683,7 @@ FocusScope {
         for (const d of drops) {
             d.y += 2
             if (Logic.rectsOverlap(d, player)) {
-                if (d.type === "firewall") shield = true
-                else { powerup = d.type; powerupTicks = Logic.POWERUP_TICKS }
-                play("powerup")
+                collect(d.type)
                 continue
             }
             if (d.y < 720) dropKeep.push(d)
@@ -730,8 +800,7 @@ FocusScope {
                 }
             }
 
-            ctx.fillStyle = root.theme ? root.theme.yellow : "#fffd6b"
-            for (const b of root.bullets) ctx.fillRect(b.x, b.y, b.w, b.h)
+            for (const b of root.bullets) Sprites.drawPlayerBullet(ctx, b.kind, b.x, b.y, b.w, b.h)
             for (const e of root.enemyBullets) Sprites.drawEnemyBullet(ctx, e.src, e.x + e.w / 2, e.y + e.h / 2, e.w, e.h)
             for (const d of root.drops) Sprites.drawPowerup(ctx, d.type, d.x, d.y, d.h)
 
@@ -767,13 +836,24 @@ FocusScope {
             width: 150
             height: 26
             Text {
-                text: root.powerup === "sudo" ? "SUDO SPREAD" : "PACMAN -SYU"
+                text: ({ sudo: "SUDO SPREAD", pacman: "PACMAN -SYU", bomb: "KILL -9 BOMBS",
+                         laser: "GREP LASER", homing: "SSH HOMING" })[root.powerup] || ""
                 font.family: "monospace"; font.pixelSize: 14; font.bold: true; color: "#5bc0ff"
             }
             Rectangle {
                 y: 20; height: 5; radius: 2; color: "#5bc0ff"
                 width: 150 * root.powerupTicks / Logic.POWERUP_TICKS
             }
+        }
+        Text {
+            visible: root.frozen > 0
+            text: "SIGSTOP"
+            font.family: "monospace"; font.pixelSize: 14; font.bold: true; color: "#80d8ff"
+        }
+        Text {
+            visible: root.doubleTicks > 0
+            text: "2X SCORE"
+            font.family: "monospace"; font.pixelSize: 14; font.bold: true; color: "#ffd400"
         }
         Text {
             visible: root.muted > 0

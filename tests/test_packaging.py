@@ -62,3 +62,22 @@ def test_pkgbuild_fields():
     ):
         assert needle in text, needle
     assert "etc/skel" not in text
+
+
+def test_release_notes_extracts_version_section(tmp_path):
+    log = tmp_path / "CHANGELOG.md"
+    log.write_text("# Changelog\n\n## 2.0.0\n\n### Changes\n\n- b\n\n## 1.0.0\n\n### Changes\n\n- a\n")
+    run = lambda v: subprocess.run(
+        ["python3", str(ROOT / "packaging/release_notes.py"), v, str(log)], capture_output=True, text=True
+    )
+    assert run("2.0.0").stdout == "### Changes\n\n- b\n"
+    assert run("1.0.0").stdout == "### Changes\n\n- a\n"
+    assert run("3.0.0").returncode != 0
+
+
+def test_changelog_has_current_version():
+    from winvaders import __version__
+
+    result = subprocess.run(["python3", str(ROOT / "packaging/release_notes.py"), __version__], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.startswith("### Changes\n\n- ")

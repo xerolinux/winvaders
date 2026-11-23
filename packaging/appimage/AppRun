@@ -1,0 +1,4 @@
+#!/bin/sh
+HERE="$(dirname "$(readlink -f "$0")")"
+export WINVADERS_SDL="$HERE/usr/lib/libSDL3.so.0"
+exec "$HERE/usr/python/bin/python3" -I -m winvaders "$@"

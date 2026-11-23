@@ -157,3 +157,32 @@ def test_music_toggle_resumes_current_screen_track(engine, qapp):
     press(qapp, w, Qt.Key_N, False)
     assert music.current == "menu"
     assert _wait_playing(qapp, music)
+
+
+def test_menu_offers_update_when_available(engine, qapp):
+    from PySide6.QtCore import Qt
+
+    w = window(engine)
+    w.show()
+    menu = w.findChild(QObject, "menu")
+    labels = lambda: [e["label"] for e in menu.property("entries").toVariant()]
+    assert not any(l.startswith("UPDATE") for l in labels())
+    calls = []
+    engine.updater.fetch = lambda url, done: calls.append(url)
+    engine.updater.assets = ("image-url", "sha-url")
+    engine.updater._latest = "9.9.9"
+    engine.updater.set_state("available")
+    assert labels()[0] == "UPDATE TO v9.9.9"
+    menu.setProperty("current", 0)
+    press(qapp, w, Qt.Key_Return, False)
+    assert calls == ["sha-url"]
+    assert labels()[0] == "DOWNLOADING UPDATE..."
+    engine.updater.set_state("failed")
+    assert labels()[0] == "UPDATE FAILED - RETRY"
+
+
+def test_desktop_shortcut_entry_hidden_without_helper(engine, monkeypatch):
+    from winvaders import shortcut
+
+    monkeypatch.setattr(shortcut, "SCRIPT", shortcut.SCRIPT.with_name("missing-helper"))
+    assert engine.bridge.canAddDesktopShortcut() is False

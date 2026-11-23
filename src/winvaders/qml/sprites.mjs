@@ -1681,7 +1681,26 @@ export function drawPlayer(ctx, x, y, w, h, shielded, tick) {
 const POWERUP_STYLE = {
     sudo: ["#ff5f56", "sudo"],
     pacman: ["#1793d1", "-Syu"],
-    firewall: ["#ffb454", "FW"]
+    firewall: ["#ffb454", "FW"],
+    bomb: ["#ff8c00", "-9"],
+    laser: ["#c040fb", "grep"],
+    homing: ["#00b8d4", "ssh"],
+    freeze: ["#4fc3f7", "STOP"],
+    double: ["#e6b800", "2x"],
+    nuke: ["#ff1744", "rm"],
+    oneup: ["#22c55e", "1UP"]
+}
+
+const PLAYER_BULLET = { bomb: "#ff8c00", laser: "#e040fb", homing: "#00e5ff" }
+
+export function drawPlayerBullet(ctx, kind, x, y, w, h) {
+    if (kind === "bomb") {
+        dot(ctx, x + w / 2, y + 5, 5, PLAYER_BULLET.bomb)
+        dot(ctx, x + w / 2, y + 5, 2, "#fff3c4")
+        return
+    }
+    ctx.fillStyle = PLAYER_BULLET[kind] || "#fffd6b"
+    ctx.fillRect(x, y, w, h)
 }
 
 export function drawPowerup(ctx, type, x, y, size) {

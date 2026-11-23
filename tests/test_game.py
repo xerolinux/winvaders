@@ -299,3 +299,74 @@ def test_music_follows_levels_and_pause(ctx):
     assert music.paused
     invoke(game, "unpause")
     assert not music.paused
+
+
+def _fresh(game, level=2):
+    invoke(game, "resume", {"level": level, "score": 0, "lives": 3, "next_life": 10000, "seed": 4})
+    game.setProperty("bannerTicks", 0)
+    invoke(game, "tick")
+
+
+def _alive(game):
+    return sum(1 for a in prop(game, "aliens") if a["alive"])
+
+
+def test_oneup_adds_life(ctx):
+    _, _, game, _ = ctx
+    _fresh(game)
+    invoke(game, "collect", "oneup")
+    assert prop(game, "lives") == 4
+
+
+def test_nuke_clears_bullets_and_hits_everyone(ctx):
+    _, _, game, _ = ctx
+    _fresh(game)
+    before = _alive(game)
+    game.setProperty("enemyBullets", [{"x": 600, "y": 300, "w": 10, "h": 14, "vx": 0, "vy": 3, "src": "word", "age": 0}])
+    invoke(game, "collect", "nuke")
+    assert prop(game, "enemyBullets") == []
+    assert _alive(game) < before
+
+
+def test_bomb_destroys_several(ctx):
+    _, _, game, _ = ctx
+    _fresh(game)
+    alive = [a for a in prop(game, "aliens") if a["alive"]]
+    cx = sum(a["x"] for a in alive) / len(alive)
+    cy = sum(a["y"] for a in alive) / len(alive)
+    a = min(alive, key=lambda a: abs(a["x"] - cx) + abs(a["y"] - cy))
+    before = _alive(game)
+    invoke(game, "explode", a["x"] + a["w"] / 2, a["y"] + a["h"] / 2)
+    assert before - _alive(game) >= 3
+
+
+def test_freeze_stops_march(ctx):
+    _, _, game, _ = ctx
+    _fresh(game)
+    invoke(game, "collect", "freeze")
+    xs = [a["x"] for a in prop(game, "aliens")]
+    for _ in range(20):
+        invoke(game, "tick")
+    assert [a["x"] for a in prop(game, "aliens")] == xs
+
+
+def test_double_score(ctx):
+    _, _, game, _ = ctx
+    _fresh(game)
+    invoke(game, "collect", "double")
+    invoke(game, "addScore", 50)
+    assert prop(game, "score") == 100
+
+
+def test_weapon_powerups_run_clean(ctx):
+    engine, _, game, _ = ctx
+    for kind in ("bomb", "laser", "homing", "sudo", "pacman"):
+        _fresh(game)
+        game.setProperty("lives", 10000)
+        invoke(game, "collect", kind)
+        assert prop(game, "powerup") == kind
+        game.setProperty("fireHeld", True)
+        for _ in range(200):
+            invoke(game, "tick")
+        game.setProperty("fireHeld", False)
+    assert engine.qml_warnings == []

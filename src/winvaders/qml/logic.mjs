@@ -50,9 +50,31 @@ export const BOSS_SHORT = {
     clippy: "CLIPPY", cortanaboss: "CORTANA", zune: "ZUNE", bsod: "BSOD", ieboss: "IE", bob: "BOB",
     redring: "RROD", teamsboss: "TEAMS", winupdate: "UPDATE", kinect: "KINECT", uac: "UAC", copilotboss: "COPILOT"
 }
-export const POWERUPS = ["sudo", "pacman", "firewall"]
-export const POWERUP_DROP = 0.04
-export const POWERUP_TICKS = 500
+export const POWERUP_WEIGHTS = {
+    sudo: 12, pacman: 12, bomb: 10, laser: 8, homing: 8,
+    firewall: 10, freeze: 8, double: 8, nuke: 4, oneup: 4
+}
+export const POWERUPS = Object.keys(POWERUP_WEIGHTS)
+export const WEAPON_POWERUPS = ["sudo", "pacman", "bomb", "laser", "homing"]
+export const POWERUP_DROP = 0.06
+export const POWERUP_TICKS = 1875
+export const FREEZE_TICKS = 625
+export const BOMB_RADIUS = 70
+export const ATTACK_PACE = { winupdate: 2.5 }
+
+export function pickPowerup(r) {
+    const total = POWERUPS.reduce((sum, p) => sum + POWERUP_WEIGHTS[p], 0)
+    let left = r * total
+    for (const p of POWERUPS) {
+        left -= POWERUP_WEIGHTS[p]
+        if (left < 0) return p
+    }
+    return POWERUPS[POWERUPS.length - 1]
+}
+
+export function attackDelay(kind, attackEvery) {
+    return Math.round(attackEvery * (ATTACK_PACE[kind] || 1))
+}
 export const EXTRA_LIFE_EVERY = 10000
 export const MUTE_TICKS = 90
 

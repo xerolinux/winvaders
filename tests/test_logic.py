@@ -202,10 +202,19 @@ def test_rects_overlap(logic):
     assert logic.call("rectsOverlap", a, {"x": 9, "y": 9, "w": 5, "h": 5}) is True
 
 
-def test_powerup_constants(logic):
-    assert logic.get("POWERUPS") == ["sudo", "pacman", "firewall"]
-    assert logic.get("POWERUP_DROP") == 0.04
-    assert logic.get("POWERUP_TICKS") == 500
+def test_powerup_table(logic):
+    pups = logic.get("POWERUPS")
+    assert set(pups) == {"sudo", "pacman", "firewall", "bomb", "laser", "homing", "freeze", "double", "nuke", "oneup"}
+    assert logic.get("POWERUP_DROP") == 0.06
+    assert logic.get("POWERUP_TICKS") == 1875
+    picked = {logic.call("pickPowerup", i / 1000) for i in range(1000)}
+    assert picked == set(pups)
+    assert logic.call("pickPowerup", 0.999999) in pups
+
+
+def test_windows_update_attacks_less_often(logic):
+    assert logic.call("attackDelay", "winupdate", 40) == 100
+    assert logic.call("attackDelay", "clippy", 40) == 40
 
 
 def test_step_enemy_bullet_kinds(logic):

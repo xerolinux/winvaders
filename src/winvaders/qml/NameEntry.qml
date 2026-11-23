@@ -11,6 +11,24 @@ FocusScope {
 
     signal submitted(string name)
 
+    readonly property string letters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+    function setName(text) {
+        input.text = text
+        input.cursorPosition = text.length
+    }
+
+    function cycleLetter(step) {
+        const t = input.text
+        if (t === "") {
+            setName("A")
+            return
+        }
+        const i = letters.indexOf(t[t.length - 1].toUpperCase())
+        const next = letters[(i + step + letters.length) % letters.length]
+        setName(t.slice(0, -1) + next)
+    }
+
     function reset() {
         armed = false
         input.text = defaultName
@@ -73,16 +91,26 @@ FocusScope {
                 onAccepted: root.submitted(text)
                 // Swallow keys still auto-repeating from the game until a fresh press.
                 Keys.onPressed: function(event) {
-                    if (root.armed) return
-                    if (event.isAutoRepeat) event.accepted = true
-                    else root.armed = true
+                    if (!root.armed) {
+                        if (event.isAutoRepeat) {
+                            event.accepted = true
+                            return
+                        }
+                        root.armed = true
+                    }
+                    const k = event.key
+                    if (k === Qt.Key_Up || k === Qt.Key_Down) root.cycleLetter(k === Qt.Key_Up ? 1 : -1)
+                    else if (k === Qt.Key_Right) root.setName(input.text + (input.text.length < input.maximumLength ? "A" : ""))
+                    else if (k === Qt.Key_Left) root.setName(input.text.slice(0, -1))
+                    else return
+                    event.accepted = true
                 }
             }
         }
 
         Text {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: "Press Enter to save"
+            text: "Enter or A to save  -  pad: Up/Down letter, Right add, Left delete"
             font.family: root.theme.font
             font.pixelSize: 18
             color: root.theme.muted

@@ -12,8 +12,19 @@ that never end.
 
 Inspired by: **RandyPinball**
 
-## Install on XeroLinux only
+## Install on XeroLinux
 
 ```sh
 sudo pacman -S winvaders
 ```
+
+## Other distros
+
+Download `WinVaders-x86_64.AppImage` from the
+[latest release](https://github.com/xerolinux/winvaders/releases/latest), then:
+
+```sh
+chmod +x WinVaders-x86_64.AppImage && ./WinVaders-x86_64.AppImage
+```
+
+The AppImage updates itself from the main menu.
