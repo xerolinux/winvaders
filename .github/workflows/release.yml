@@ -30,17 +30,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build libudev-dev libdbus-1-dev \
+          sudo apt-get install -y cmake ninja-build libudev-dev \
             libegl1 libgl1 libxkbcommon0 libfontconfig1 libpulse0
 
       - name: Build SDL3
         run: |
           git clone --depth 1 --branch "$SDL_TAG" https://github.com/libsdl-org/SDL.git sdl
-          cmake -S sdl -B sdl-build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF
-          cmake --build sdl-build
+          # Only the gamepad subsystem is used; Qt owns video and audio.
+          cmake -S sdl -B build-sdl -G Ninja -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=OFF -DSDL_EXAMPLES=OFF \
+            -DSDL_VIDEO=OFF -DSDL_RENDER=OFF -DSDL_GPU=OFF -DSDL_AUDIO=OFF -DSDL_CAMERA=OFF -DSDL_UNIX_CONSOLE_BUILD=ON
+          cmake --build build-sdl
 
       - name: Build AppImage
-        run: packaging/appimage/build.sh sdl-build/libSDL3.so.0 dist
+        run: packaging/appimage/build.sh build-sdl/libSDL3.so.0 dist
 
       - name: Publish release
         env:
