@@ -1,7 +1,7 @@
 # Maintainer: DarkXero <info@techxero.com>
 
 pkgname=winvaders
-pkgver=1.3.0
+pkgver=1.3.1
 pkgrel=1
 pkgdesc="Arcade shooter: defend Linux from invading Microsoft apps"
 arch=('any')

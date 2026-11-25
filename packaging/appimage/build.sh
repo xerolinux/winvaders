@@ -50,6 +50,16 @@ rm -rf "$QT"/{include,typesystems,glue,scripts,examples,Qt/translations} \
 find "$APPDIR" -name '*.pyi' -delete
 find "$APPDIR" -name '__pycache__' -prune -exec rm -rf {} +
 
+# Qt's xcb plugin needs the xcb-util family, which many distros (Mint, Ubuntu) do not install by default.
+for so in libxcb-cursor.so.0 libxcb-icccm.so.4 libxcb-keysyms.so.1 libxcb-image.so.0 \
+          libxcb-render-util.so.0 libxcb-util.so.1 libxkbcommon-x11.so.0; do
+    src=$(ldconfig -p | awk -v n="$so" '$1 == n && /x86-64/ {print $NF; exit}')
+    [ -n "$src" ] || { echo "missing $so on build host" >&2; exit 1; }
+    install -m644 "$(readlink -f "$src")" "$QT/Qt/lib/$so"
+done
+ldd "$QT/Qt/lib/libQt6XcbQpa.so.6" | grep -q "libxcb-cursor.so.0 => $QT/Qt/lib/" \
+    || { echo "xcb plugin does not resolve bundled libxcb-cursor" >&2; exit 1; }
+
 install -m755 "$SDL" "$APPDIR/usr/lib/libSDL3.so.0"
 install -m755 "$ROOT/packaging/appimage/AppRun" "$APPDIR/AppRun"
 install -m644 "$ROOT/data/winvaders.desktop" "$APPDIR/winvaders.desktop"

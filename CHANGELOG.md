@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.1
+
+### Changes
+
+- AppImage now starts on X11 desktops without extra packages (fixes Linux Mint)
+
 ## 1.3.0
 
 ### Changes
